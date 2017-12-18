@@ -31,6 +31,15 @@ function HexgridHeatmap(map, layername, addBefore) {
     this._checkUpdateCompleteClosure = function(e) { thisthis._checkUpdateComplete(e); }
     this._calculatingGrid = false;
     this._recalcWhenReady = false;
+
+    this._propertyName = null;
+    this._reduceFunction = function(data) {
+      var sum = data.reduce(function(a,b) {
+        return a + b;
+      });
+      var count = data.length;
+      return sum / count;
+    }
 }
 
 HexgridHeatmap.prototype = {
@@ -61,10 +70,18 @@ HexgridHeatmap.prototype = {
         this.source = this.map.getSource(layername);
     },
     _setupEvents: function() {
-        var thisthis = this;
-        this.map.on("moveend", function() {
-            thisthis._updateGrid();
-        });
+        // var thisthis = this;
+        // this.map.on("moveend", function() {
+        //     thisthis._updateGrid();
+        // });
+    },
+
+    setReduceFunction: function(f) {
+      this._reduceFunction = f;
+    },
+
+    setPropertyName: function(propertyName) {
+      this._propertyName = propertyName;
     },
 
 
@@ -159,13 +176,21 @@ HexgridHeatmap.prototype = {
             maxY: NE.geometry.coordinates[1]
         });
 
-        pois.forEach(function(poi) {
-            // TODO: Allow weight to be influenced by a property within the POI
-            var distance = turf.distance(center, poi);
+        if (thisthis._propertyName) {
+          var values = pois.map(function(poi) {
+            return poi['properties'][thisthis._propertyName];
+          });
+          if (values.length) {
+            strength = thisthis._reduceFunction(values);
+          }
+        } else {
+          pois.forEach(function(poi) {
+              var distance = turf.distance(center, poi);
 
-            var weighted = Math.min(Math.exp(-(distance * distance / (2 * sigma * sigma))) * a * amplitude, thisthis._maxPointIntensity);
-            strength += weighted;
-        });
+              var weighted = Math.min(Math.exp(-(distance * distance / (2 * sigma * sigma))) * a * amplitude, thisthis._maxPointIntensity);
+              strength += weighted;
+          });
+        }
 
         cell.properties.count = strength;
 
