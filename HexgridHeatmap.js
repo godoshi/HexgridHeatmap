@@ -26,6 +26,7 @@ function HexgridHeatmap(map, layername, addBefore) {
     this._minCellIntensity = 0; // Drop out cells that have less than this intensity
     this._maxPointIntensity = 20; // Don't let a single point have a greater weight than this
     this._cellDensity = 1;
+    this._cellSize = 0; // If > 0, cell density is ignored
 
     var thisthis = this;
     this._checkUpdateCompleteClosure = function(e) { thisthis._checkUpdateComplete(e); }
@@ -135,6 +136,16 @@ HexgridHeatmap.prototype = {
         this._cellDensity = density;
     },
 
+    /**
+      * Set the hexgrid cell size
+      * @param {number} density - Cell size (in miles)
+      * @public
+      */
+    setCellSize: function(size) {
+        this._cellSize = Math.abs(size);
+    },
+
+
 
     /**
       * Manually force an update to the heatmap
@@ -149,13 +160,16 @@ HexgridHeatmap.prototype = {
       // Rebuild grid
       //var cellSize = Math.min(Math.max(1000/Math.pow(2,this.map.transform.zoom), 0.01), 0.1); // Constant screen size
 
-      var cellSize = Math.max(500/Math.pow(2,this.map.transform.zoom) / this._cellDensity, 0.01); // Constant screen size
+      var cellSize = this._cellSize;
+      if (!cellSize) {
+        cellSize = Math.max(500/Math.pow(2,this.map.transform.zoom) / this._cellDensity, 0.01); // Constant screen size
+      }
       
       // TODO: These extents don't work when the map is rotated
       var extents = this.map.getBounds().toArray()
       extents = [extents[0][0], extents[0][1], extents[1][0], extents[1][1]];
 
-      var hexgrid = turf.hexGrid(extents, cellSize, 'kilometers');
+      var hexgrid = turf.hexGrid(extents, cellSize, 'miles');
 
       var sigma = this._spread;
       var a = 1 / (sigma * Math.sqrt(2 * Math.PI));
